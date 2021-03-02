@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Crypto Plug</string>
+
+    <string-array name="options">
+        <item>Select Item</item>
+        <item >Coin list</item>
+        <item>Articles</item>
+        <item>Tweets</item>
+    </string-array>
 </resources>

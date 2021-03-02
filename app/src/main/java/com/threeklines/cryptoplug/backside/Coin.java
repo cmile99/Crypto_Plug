@@ -3,24 +3,18 @@ package com.threeklines.cryptoplug.backside;
 import java.util.HashMap;
 
 public class Coin {
-
-    //final values-> coin metadata
     private  int id;
     private String name;
     private String symbol;
     private String category;
     private String slug;
     private String logo;
-    private String platform;
     private final HashMap<String, String> urls = new HashMap<>();
-
-    // the changing market values
     private int circulatingSupply;
     private int totalSuppy;
-    private long maxSupply;
+    private int maxSupply;
     private String lastUpdated;
     private String dateAdded;
-    private boolean minable;
     private double price;
     private long volume24h;
     private double percentageChange1h;
@@ -52,10 +46,6 @@ public class Coin {
         this.logo = logo;
     }
 
-    public void setPlatform(String platform) {
-        this.platform = platform;
-    }
-
     public int getId() {
         return id;
     }
@@ -80,10 +70,6 @@ public class Coin {
         return logo;
     }
 
-    public String getPlatform() {
-        return platform;
-    }
-
     public HashMap<String, String> getUrls() {
         return urls;
     }
@@ -104,11 +90,11 @@ public class Coin {
         this.totalSuppy = totalSuppy;
     }
 
-    public long getMaxSupply() {
+    public int getMaxSupply() {
         return maxSupply;
     }
 
-    public void setMaxSupply(long maxSupply) {
+    public void setMaxSupply(int maxSupply) {
         this.maxSupply = maxSupply;
     }
 
@@ -126,14 +112,6 @@ public class Coin {
 
     public void setDateAdded(String dateAdded) {
         this.dateAdded = dateAdded;
-    }
-
-    public boolean isMinable() {
-        return minable;
-    }
-
-    public void setMinable(boolean minable) {
-        this.minable = minable;
     }
 
     public double getPrice() {
