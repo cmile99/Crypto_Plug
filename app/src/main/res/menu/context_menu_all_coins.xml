@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/view_coin"
+        android:title="@string/menu_view_coin" />
+    <item
+        android:id="@+id/add_to_watchlist"
+        android:title="@string/add_to_watchlist" />
+</menu>

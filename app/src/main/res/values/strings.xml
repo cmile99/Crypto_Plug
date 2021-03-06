@@ -1,10 +1,19 @@
 <resources>
     <string name="app_name">Crypto Plug</string>
+    <string name="coins_menu_text">Coins</string>
+    <string name="articles_menu_text">Articles</string>
+    <string name="twitter_menu_text">Twitter</string>
+    <string name="reddit_menu_text">Reddit</string>
 
     <string-array name="options">
         <item>Select Item</item>
-        <item >Coin list</item>
+        <item>Coin list</item>
         <item>Articles</item>
         <item>Tweets</item>
     </string-array>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="menu_view_coin">View Coin</string>
+    <string name="add_to_watchlist">Add To Watchlist</string>
+    <string name="articles_heading">Latest Articles</string>
 </resources>

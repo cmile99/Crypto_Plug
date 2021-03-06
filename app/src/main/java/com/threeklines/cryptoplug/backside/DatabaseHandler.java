@@ -87,8 +87,10 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public void insertCoinList(ArrayList<Coin> coins) {
+
+    public void insertCoinList(List<Coin> coins) {
         SQLiteDatabase db = this.getWritableDatabase();
+        Log.d(TAG, "insertCoinList: checking" + coins.size() );
         for (Coin coin : coins) {
             ContentValues values = new ContentValues();
             values.put(DbContract.CoinsTable.ID_COLUMN, coin.getId());
@@ -133,7 +135,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         Log.d(TAG, "insertUrls: links entered " + db.insert(DbContract.CoinUrlsTable.COINS_URLS_TABLE_NAME, null, values));
     }
 
-    public void insertArticles(ArrayList<Article> articles) {
+    public void insertArticles(List<Article> articles) {
         SQLiteDatabase db = this.getWritableDatabase();
         for (Article article : articles) {
             ContentValues values = new ContentValues();
@@ -167,7 +169,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 DbContract.ArticlesTable.CATEGORIES_COLUMN
         };
 
-        Cursor cursor = db.rawQuery("SELECT * FROM " + DbContract.ArticlesTable.ARTICLES_TABLE_NAME, projection);
+        Cursor cursor = db.query(DbContract.ArticlesTable.ARTICLES_TABLE_NAME, projection, null, null, null, null, null);
         if (cursor.moveToFirst()) {
             do {
                 Article article = new Article(
@@ -190,7 +192,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return articles;
     }
 
-    public ArrayList<Coin> queryCoinList(SQLiteDatabase db) {
+    public ArrayList<Coin> queryCoinList() {
+        SQLiteDatabase db = this.getReadableDatabase();
         ArrayList<Coin> coins = new ArrayList<>();
         String[] projetion = {
                 DbContract.CoinsTable.ID_COLUMN,
@@ -245,6 +248,61 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return coins;
     }
 
+    public Coin querryCoin(String slug){
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] projetion = {
+                DbContract.CoinsTable.ID_COLUMN,
+                DbContract.CoinsTable.NAME_COLUMN,
+                DbContract.CoinsTable.SYMBOL_COLUMN,
+                DbContract.CoinsTable.CATEGORY_COLUMN,
+                DbContract.CoinsTable.SLUG_COLUMN,
+                DbContract.CoinsTable.LOGO_COLUMN,
+                DbContract.CoinsTable.CIRCULATING_SUPPLY_COLUMN,
+                DbContract.CoinsTable.TOTAL_SUPPLY_COLUMN,
+                DbContract.CoinsTable.MAX_SUPPLY_COLUMN,
+                DbContract.CoinsTable.LAST_UPDATED_COLUMN,
+                DbContract.CoinsTable.PRICE_COLUMN,
+                DbContract.CoinsTable.VOLUME24H_COLUMN,
+                DbContract.CoinsTable.PERCENTAGE_CHANGE1H_COLUMN,
+                DbContract.CoinsTable.PERCENTAGE_CHANGE24_COLUMN,
+                DbContract.CoinsTable.PERCENTAGE_CHANGE7d_COLUMN,
+                DbContract.CoinsTable.MARKET_CAP_COLUMN
+        };
+
+        String selection = DbContract.CoinsTable.SLUG_COLUMN + " =?";
+        String[] selectionArgs = {slug};
+
+        Cursor coinResults = db.query(DbContract.CoinsTable.TABLE_NAME, projetion, selection, selectionArgs, null, null, null);
+        Coin coin = new Coin();
+        if (coinResults.moveToFirst()) {
+            do {
+
+                coin.setId(coinResults.getInt(coinResults.getColumnIndex(DbContract.CoinsTable.ID_COLUMN)));
+                coin.setName(coinResults.getString(coinResults.getColumnIndex(DbContract.CoinsTable.NAME_COLUMN)));
+                coin.setSymbol(coinResults.getString(coinResults.getColumnIndex(DbContract.CoinsTable.SYMBOL_COLUMN)));
+                coin.setCategory(coinResults.getString(coinResults.getColumnIndex(DbContract.CoinsTable.CATEGORY_COLUMN)));
+                coin.setSlug(coinResults.getString(coinResults.getColumnIndex(DbContract.CoinsTable.SLUG_COLUMN)));
+                coin.setLogo(coinResults.getString(coinResults.getColumnIndex(DbContract.CoinsTable.LOGO_COLUMN)));
+                coin.setCirculatingSupply(coinResults.getInt(coinResults.getColumnIndex(DbContract.CoinsTable.CIRCULATING_SUPPLY_COLUMN)));
+                coin.setTotalSuppy(coinResults.getInt(coinResults.getColumnIndex(DbContract.CoinsTable.TOTAL_SUPPLY_COLUMN)));
+                coin.setMaxSupply(coinResults.getInt(coinResults.getColumnIndex((DbContract.CoinsTable.MAX_SUPPLY_COLUMN))));
+                coin.setLastUpdated(coinResults.getString(coinResults.getColumnIndex(DbContract.CoinsTable.LAST_UPDATED_COLUMN)));
+                coin.setPrice(coinResults.getDouble(coinResults.getColumnIndex(DbContract.CoinsTable.PRICE_COLUMN)));
+                coin.setVolume24h(coinResults.getLong(coinResults.getColumnIndex(DbContract.CoinsTable.VOLUME24H_COLUMN)));
+                coin.setPercentageChange1h(coinResults.getDouble(coinResults.getColumnIndex(DbContract.CoinsTable.PERCENTAGE_CHANGE1H_COLUMN)));
+                coin.setPercentageChange24h(coinResults.getDouble(coinResults.getColumnIndex(DbContract.CoinsTable.PERCENTAGE_CHANGE24_COLUMN)));
+                coin.setPercentageChange7d(coinResults.getDouble(coinResults.getColumnIndex(DbContract.CoinsTable.PERCENTAGE_CHANGE7d_COLUMN)));
+                coin.setMarketCap(coinResults.getInt(coinResults.getColumnIndex(DbContract.CoinsTable.MARKET_CAP_COLUMN)));
+
+                Map<String, String> list = queeryUrls(coin.getId(), db);
+                for (String s : list.keySet()) {
+                    coin.getUrls().put(s, list.get(s));
+                }
+            } while (coinResults.moveToNext());
+        }
+        return coin;
+    }
+
     private HashMap<String, String> queeryUrls(int id, SQLiteDatabase db) {
         String[] projection = {DbContract.CoinUrlsTable.URL_COLUMN, DbContract.CoinUrlsTable.URL_DESTINATON_COLUMN};
         String selection = DbContract.CoinUrlsTable.COIN_ID_COLUMN + " = ?";
@@ -262,7 +320,10 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     }
 
     public void insertTweets(List<TweetCard> tweetCards) {
+
         SQLiteDatabase db = this.getWritableDatabase();
+        db.execSQL(DELETE_TWEETS_TABLE);
+        db.execSQL(CREATE_TWEETS_TABLE);
         for (TweetCard tweetCard : tweetCards) {
             ContentValues values = new ContentValues();
             values.put(DbContract.TweetsCardTable.TWEET_ID, tweetCard.getTweetId());

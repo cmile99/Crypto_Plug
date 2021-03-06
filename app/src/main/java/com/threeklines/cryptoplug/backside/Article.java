@@ -3,7 +3,7 @@ package com.threeklines.cryptoplug.backside;
 public class Article {
     private final String id;
     private final String guid;
-    private final int datePublished;
+    private final long datePublished;
     private final String imageUrl;
     private final String title;
     private final String url;
@@ -12,7 +12,7 @@ public class Article {
     private final String tags;
     private final String categories;
 
-    public Article(String id, String guid, int datePublished, String imageUrl, String title, String url, String source, String body, String tags, String categories) {
+    public Article(String id, String guid, long datePublished, String imageUrl, String title, String url, String source, String body, String tags, String categories) {
         this.id = id;
         this.guid = guid;
         this.datePublished = datePublished;
@@ -33,7 +33,7 @@ public class Article {
         return guid;
     }
 
-    public int getDatePublished() {
+    public long getDatePublished() {
         return datePublished;
     }
 
@@ -65,19 +65,4 @@ public class Article {
         return categories;
     }
 
-    @Override
-    public String toString() {
-        return "Article{" +
-                "id='" + id + '\'' +
-                ", guid='" + guid + '\'' +
-                ", datePublished=" + datePublished +
-                ", imageUrl='" + imageUrl + '\'' +
-                ", title='" + title + '\'' +
-                ", url='" + url + '\'' +
-                ", source='" + source + '\'' +
-                ", body='" + body + '\'' +
-                ", tags='" + tags + '\'' +
-                ", categories='" + categories + '\'' +
-                '}';
-    }
 }

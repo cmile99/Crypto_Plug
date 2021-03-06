@@ -3,6 +3,7 @@ package com.threeklines.cryptoplug.backside;
 import android.provider.BaseColumns;
 
 public final class DbContract {
+    public static final String DB_NAME = "test_db";
     private DbContract() {
     }
 

@@ -4,6 +4,7 @@ import android.util.Log;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
+import com.loopj.android.http.SyncHttpClient;
 import cz.msebera.android.httpclient.Header;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,18 +21,18 @@ public class ApiCenter {
     private final AsyncHttpClient coinClient = new AsyncHttpClient();
     private final AsyncHttpClient articleClient = new AsyncHttpClient();
 
-    public List<Coin> getCoinsList() {
+    public List<Coin> getCoinsList(DatabaseHandler handler) {
         List<Coin> coins = new ArrayList<>();
         RequestParams params = new RequestParams();
         params.put("CMC_PRO_API_KEY", CMC_API_KEY);
+        SyncHttpClient syncHttpClient = new SyncHttpClient();
         String CMC_LATEST_COINS_LIST_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest";
-        coinClient.get(CMC_LATEST_COINS_LIST_URL, params, new JsonHttpResponseHandler() {
+        syncHttpClient.get(CMC_LATEST_COINS_LIST_URL, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
-                    Log.d(TAG, "onSuccess: getCoinList: status code " + statusCode);
-                    coins.addAll(decodeCoinList(response));
-                    Log.d(TAG, "onSuccess: ");
+                    List<Coin> list = decodeCoinList(response);
+                    coins.addAll(list);
                 } catch (JSONException e) {
                     Log.d(TAG, "onSuccess: json error: " + e.getMessage());
                 }
@@ -46,8 +47,43 @@ public class ApiCenter {
                 }
             }
         });
+        Log.d(TAG, "getCoinsList: coins size" + coins.size());
+        handler.insertCoinList(coins);
 
         return coins;
+    }
+
+    public Coin getCoinMetadata(Coin coin, DatabaseHandler handler) {
+        final Coin[] updatedCoin = new Coin[1];
+        RequestParams params = new RequestParams();
+        params.put("CMC_PRO_API_KEY", CMC_API_KEY);
+        params.put("slug", coin.getSlug());
+        String CMC_COIN_METADATA_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/info";
+        SyncHttpClient syncHttpClient = new SyncHttpClient();
+        syncHttpClient.get(CMC_COIN_METADATA_URL, params, new JsonHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                Log.d(TAG, "onSuccess: getCoinMetadata status code " + statusCode);
+                try {
+                    updatedCoin[0] = decodeMetadata(response, coin);
+                    Log.d(TAG, "onSuccess: Coin Metadata: " + updatedCoin[0].getLogo());
+                    handler.insertCoinMetadata(updatedCoin[0]);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                try {
+                    Log.d(TAG, "onFailure: " + errorResponse.toString());
+                }catch (Exception e){
+                    Log.d(TAG, "onFailure: error to string returned null pointer");
+                }
+            }
+        });
+        return updatedCoin[0];
     }
 
     public Coin getCoinMetadata(Coin coin) {
@@ -56,12 +92,20 @@ public class ApiCenter {
         params.put("CMC_PRO_API_KEY", CMC_API_KEY);
         params.put("slug", coin.getSlug());
         String CMC_COIN_METADATA_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/info";
-        coinClient.get(CMC_COIN_METADATA_URL, params, new JsonHttpResponseHandler() {
+        SyncHttpClient syncHttpClient = new SyncHttpClient();
+        syncHttpClient.get(CMC_COIN_METADATA_URL, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 Log.d(TAG, "onSuccess: getCoinMetadata status code " + statusCode);
+                if (statusCode != 200){
+                    updatedCoin[0] = null;
+                    return;
+                }
                 try {
                     updatedCoin[0] = decodeMetadata(response, coin);
+                    Log.d(TAG, "onSuccess: Coin Metadata: " + updatedCoin[0].getLogo());
+//                    handler.insertCoinMetadata(updatedCoin[0]);
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -69,13 +113,17 @@ public class ApiCenter {
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                Log.d(TAG, "onFailure: " + errorResponse.toString());
+                try {
+                    Log.d(TAG, "onFailure: " + errorResponse.toString());
+                }catch (Exception e){
+                    Log.d(TAG, "onFailure: error to string returned null pointer");
+                }
             }
         });
         return updatedCoin[0];
     }
 
-    public List<Article> getLatestArticles() {
+    public void getLatestArticles(DatabaseHandler handler) {
         List<Article> articles = new ArrayList<>();
         RequestParams params = new RequestParams();
         String CRYPTO_COMPARE_API_KEY = "6b17e57183e07193070c91afe2ebc9d8dbce9f71505dc5dc616f68528129b1bc";
@@ -87,6 +135,7 @@ public class ApiCenter {
                 Log.d(TAG, "onSuccess: getLatestArticles: status code " + statusCode);
                 try {
                     articles.addAll(decodeArticles(response));
+                    handler.insertArticles(articles);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -97,7 +146,6 @@ public class ApiCenter {
                 Log.d(TAG, "onFailure: " + errorResponse.toString());
             }
         });
-        return articles;
     }
 
     private List<Coin> decodeCoinList(JSONObject coinData) throws JSONException {
@@ -120,21 +168,27 @@ public class ApiCenter {
             coin.setMarketCap(coinData.getJSONArray("data").getJSONObject(i).getJSONObject("quote").getJSONObject("USD").getLong("market_cap"));
             coin.setLastUpdated(coinData.getJSONArray("data").getJSONObject(i).getJSONObject("quote").getJSONObject("USD").getString("last_updated"));
             coins.add(coin);
-            Log.d(TAG, "decodeCoinList: " + coin.getName() + " received");
+            Log.d(TAG, "decodeCoinList: " + coin.getSlug() + " received");
         }
+//        Log.d(TAG, "decodeCoinList: coins size" + coins.size());
         return coins;
     }
 
     private Coin decodeMetadata(JSONObject metadata, Coin coin) throws JSONException {
 
-        coin.setId(metadata.getJSONObject("data").getJSONObject("1").getInt("id"));
-//        coin.setSymbol(metadata.getJSONObject("data").getJSONObject("1").getString("symbol"));
-        coin.setCategory(metadata.getJSONObject("data").getJSONObject("1").getString("category"));
-        coin.setLogo(metadata.getJSONObject("data").getJSONObject("1").getString("logo"));
-        JSONObject urls = metadata.getJSONObject("data").getJSONObject("1").getJSONObject("urls");
-        coin.getUrls().put("Website", urls.getJSONArray("website").getString(0));
-        coin.getUrls().put("technical_doc", urls.getJSONArray("technical_doc").getString(0));
-        coin.getUrls().put("source_code", urls.getJSONArray("source_code").getString(0));
+        coin.setId(metadata.getJSONObject("data").getJSONObject("" + coin.getId()).getInt("id"));
+        coin.setSlug(metadata.getJSONObject("data").getJSONObject("" + coin.getId()).getString("slug"));
+        coin.setCategory(metadata.getJSONObject("data").getJSONObject("" + coin.getId()).getString("category"));
+        coin.setLogo(metadata.getJSONObject("data").getJSONObject("" + coin.getId()).getString("logo"));
+        JSONObject urls = metadata.getJSONObject("data").getJSONObject("" + coin.getId()).getJSONObject("urls");
+        try {
+            coin.getUrls().put("Website", urls.getJSONArray("website").getString(0));
+            coin.getUrls().put("technical_doc", urls.getJSONArray("technical_doc").getString(0));
+            coin.getUrls().put("source_code", urls.getJSONArray("source_code").getString(0));
+        }catch (Exception e){
+            Log.d(TAG, "decodeMetadata: Error: " + e.getMessage());
+        }
+
 
         Log.d(TAG, "decodeMetadata: coin recieved " + coin.getId());
 
@@ -148,7 +202,7 @@ public class ApiCenter {
         for (int i = 0; i < stories.length(); i++) {
             String id = stories.getJSONObject(i).getString("id");
             String guid = stories.getJSONObject(i).getString("guid");
-            int publishedOn = stories.getJSONObject(i).getInt("published_on");
+            long publishedOn = stories.getJSONObject(i).getLong("published_on");
             String imageUrl = stories.getJSONObject(i).getString("imageurl");
             String title = stories.getJSONObject(i).getString("title");
             String url = stories.getJSONObject(i).getString("url");
@@ -163,35 +217,34 @@ public class ApiCenter {
     }
 
     public void getTwitterStatuses(String searchKeyword, DatabaseHandler db) {
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                ConfigurationBuilder cb = new ConfigurationBuilder();
-                cb.setDebugEnabled(true)
-                        .setOAuthConsumerKey("W0sl9AfuyR7oyEhzKAPLj0fao")
-                        .setOAuthConsumerSecret("Ss6z6VpHcEWTu1W8cgcgsD4jerEUuHR6RGE35RAeOdkFrIqs8i")
-                        .setOAuthAccessToken("756143090163933184-gzzG1b5pGQsY6bx9CbJRYgFb7lPe5hq")
-                        .setOAuthAccessTokenSecret("bfMRZITQTH4I6Z1CE6f9RqKDTJkEocV4sshAPDnlerL2d");
-                TwitterFactory tf = new TwitterFactory(cb.build());
-                Twitter twitter = tf.getInstance();
+        Runnable runnable = () -> {
+            ConfigurationBuilder cb = new ConfigurationBuilder();
+            cb.setDebugEnabled(true)
+                    .setOAuthConsumerKey("W0sl9AfuyR7oyEhzKAPLj0fao")
+                    .setOAuthConsumerSecret("Ss6z6VpHcEWTu1W8cgcgsD4jerEUuHR6RGE35RAeOdkFrIqs8i")
+                    .setOAuthAccessToken("756143090163933184-gzzG1b5pGQsY6bx9CbJRYgFb7lPe5hq")
+                    .setOAuthAccessTokenSecret("bfMRZITQTH4I6Z1CE6f9RqKDTJkEocV4sshAPDnlerL2d");
+            TwitterFactory tf = new TwitterFactory(cb.build());
+            Twitter twitter = tf.getInstance();
 
-                Query searchQuery = new Query(searchKeyword);
-                searchQuery.setCount(50);
-                List<TweetCard> cardList = new ArrayList<>();
-                try {
-                    QueryResult queryResult = twitter.search(searchQuery);
-                    List<Status> statuses = queryResult.getTweets();
-                    for (Status status : statuses) {
-                        String TAG = "Twitter Thread";
-                        TweetCard card = createTweetCard(status);
-                        card.setTweetUrl(getEmbeddedTweet(card.getUserUrl()));
-                        cardList.add(card);
-                    }
-
-                    db.insertTweets(cardList);
-                } catch (TwitterException e) {
-                    e.printStackTrace();
+            Query searchQuery = new Query(searchKeyword);
+            searchQuery.setCount(5);
+            List<TweetCard> cardList = new ArrayList<>();
+            try {
+                QueryResult queryResult = twitter.search(searchQuery);
+                List<Status> statuses = queryResult.getTweets();
+                for (Status status : statuses) {
+                    String TAG = "Twitter Thread";
+                    TweetCard card = createTweetCard(status);
+                    String code = getEmbeddedTweet(card.getUserUrl());
+                    card.setTweetUrl(code);
+                    Log.d(TAG, "getTwitterStatuses: " +  code);
+                    cardList.add(card);
                 }
+
+                db.insertTweets(cardList);
+            } catch (TwitterException e) {
+                e.printStackTrace();
             }
         };
         Thread thread = new Thread(runnable);
@@ -202,13 +255,15 @@ public class ApiCenter {
         final String[] url = new String[1];
         RequestParams params = new RequestParams();
         params.put("url", link);
-        coinClient.get("https://publish.twitter.com/oembed", params, new JsonHttpResponseHandler() {
+        SyncHttpClient syncHttpClient = new SyncHttpClient();
+        syncHttpClient.get("https://publish.twitter.com/oembed", params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
-                    url[0] = response.getString("url");
+                    url[0] = response.getString("html");
+
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    Log.d(TAG, "onSuccess: " + e.getMessage());
                 }
             }
 
